@@ -23,7 +23,7 @@ class PlaytimeScrape:
         self.session.headers.update({"x-tycoon-key": self.env["tycoon"]})
 
         self.pool = ConnectionPool(
-            conninfo="dbname=TT user=postgres password=0nyxSt0rm!", open=True
+            conninfo=f"dbname={self.env['postgresdb']} user={self.env['postgresuser']} password={self.env['postgrespassword']}", open=True
         )
 
         logging.debug(
