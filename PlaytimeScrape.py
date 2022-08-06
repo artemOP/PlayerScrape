@@ -43,6 +43,9 @@ class PlaytimeScrape:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS uptime(server TEXT, uptime INTERVAL, timestamp DATE, PRIMARY KEY(server, timestamp))"
             )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS aliases(player INT PRIMARY KEY, current_name TEXT, aliases TEXT[])"
+            )
 
         self.FUNCTION: dict[str, Callable] = {
             "alive": self.alive,
@@ -111,6 +114,10 @@ class PlaytimeScrape:
                 self.submit(
                     "INSERT INTO totalplaytime(player, playitme, last_seen) VALUES (%(player)s, '1 minute'::interval, now():: timestamp) ON CONFLICT(player) DO UPDATE SET playitme = totalplaytime.playitme + '1 minute'::INTERVAL, last_seen = excluded.last_seen;",
                     {"player": player[2]},
+                )
+                self.submit(
+                    "INSERT INTO aliases(player, current_name, aliases) VALUES (%(player)s, %(name)s, ARRAY [%(name)s]) ON CONFLICT(player) DO UPDATE SET aliases = ARRAY (SELECT DISTINCT unnest(aliases.aliases || excluded.current_name)), current_name = excluded.current_name",
+                    {"player": player[2], "name": player[0]},
                 )
             self.submit(
                 "INSERT INTO serveractivity(server, players, timestamp) VALUES(%(server)s, %(players)s, now()::TIMESTAMP);",
