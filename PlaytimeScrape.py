@@ -10,34 +10,43 @@ from typing import Literal, Any, Callable
 
 
 class PlaytimeScrape:
-
     def __init__(self):
         logging.info("class instantiated")
         self.env: dict[str, str] = dotenv_values(".env")
 
-        self.urls: dict[
-            str, bool] = {"http://v1.api.tycoon.community/main": False, "http://v1.api.tycoon.community/beta": False}
+        self.urls: dict[str, bool] = {
+            "http://v1.api.tycoon.community/main": False,
+            "http://v1.api.tycoon.community/beta": False,
+        }
 
         self.session: Session = session()
         self.session.headers.update({"x-tycoon-key": self.env["tycoon"]})
 
-        self.pool = ConnectionPool(conninfo="dbname=TT user=postgres password=0nyxSt0rm!", open=True)
+        self.pool = ConnectionPool(
+            conninfo="dbname=TT user=postgres password=0nyxSt0rm!", open=True
+        )
 
-        logging.debug(f"env: {self.env}\n\nsession: {self.session}\n\ndb pool: {self.pool}")
+        logging.debug(
+            f"env: {self.env}\n\nsession: {self.session}\n\ndb pool: {self.pool}"
+        )
 
         with self.pool.connection() as connection:  # type:psycopg.Connection
             connection.execute(
-                "CREATE TABLE IF NOT EXISTS serveractivity(server TEXT, players INT, timestamp TIMESTAMP)")
+                "CREATE TABLE IF NOT EXISTS serveractivity(server TEXT, players INT, timestamp TIMESTAMP)"
+            )
             connection.execute(
-                "CREATE TABLE IF NOT EXISTS totalplaytime(player INT PRIMARY KEY, playitme INTERVAL, last_seen TIMESTAMP)")
+                "CREATE TABLE IF NOT EXISTS totalplaytime(player INT PRIMARY KEY, playitme INTERVAL, last_seen TIMESTAMP)"
+            )
             connection.execute(
-                "CREATE TABLE IF NOT EXISTS playtime(player INT, name TEXT, playtime INTERVAL, timestamp DATE, PRIMARY KEY(player, timestamp))")
+                "CREATE TABLE IF NOT EXISTS playtime(player INT, name TEXT, playtime INTERVAL, timestamp DATE, PRIMARY KEY(player, timestamp))"
+            )
             connection.execute(
-                "CREATE TABLE IF NOT EXISTS uptime(server TEXT, uptime INTERVAL, timestamp DATE, PRIMARY KEY(server, timestamp))")
+                "CREATE TABLE IF NOT EXISTS uptime(server TEXT, uptime INTERVAL, timestamp DATE, PRIMARY KEY(server, timestamp))"
+            )
 
         self.FUNCTION: dict[str, Callable] = {
             "alive": self.alive,
-            "players": self.players
+            "players": self.players,
         }
 
         logging.info("Setup complete")
@@ -75,7 +84,8 @@ class PlaytimeScrape:
             if self.urls[server]:
                 self.submit(
                     "INSERT INTO uptime(server, uptime, timestamp) VALUES(%(server)s, '5 seconds'::INTERVAL, now()::DATE) ON CONFLICT(server, timestamp) DO UPDATE SET uptime = uptime.uptime + '5 seconds'::INTERVAL;",
-                    {"server": server.split("/")[-1]})
+                    {"server": server.split("/")[-1]},
+                )
         logging.debug(self.urls)
 
     def players(self) -> None:
@@ -89,19 +99,26 @@ class PlaytimeScrape:
                 logging.debug("no players")
                 self.submit(
                     "INSERT INTO serveractivity(server, players, timestamp) VALUES(%(server)s, 0, now()::TIMESTAMP);",
-                    {"server": server.split("/")[-1]})
+                    {"server": server.split("/")[-1]},
+                )
                 continue
             for player in players.get("players"):
                 logging.debug(player)
                 self.submit(
                     "INSERT INTO playtime(player, name, playtime, timestamp) VALUES(%(player)s, %(name)s, '1 minute'::interval, now()::DATE) ON CONFLICT(player, timestamp) DO UPDATE SET playtime = playtime.playtime + '1 minute'::INTERVAL;",
-                    {"player": player[2], "name": player[0]})
+                    {"player": player[2], "name": player[0]},
+                )
                 self.submit(
                     "INSERT INTO totalplaytime(player, playitme, last_seen) VALUES (%(player)s, '1 minute'::interval, now():: timestamp) ON CONFLICT(player) DO UPDATE SET playitme = totalplaytime.playitme + '1 minute'::INTERVAL, last_seen = excluded.last_seen;",
-                    {"player": player[2]})
+                    {"player": player[2]},
+                )
             self.submit(
                 "INSERT INTO serveractivity(server, players, timestamp) VALUES(%(server)s, %(players)s, now()::TIMESTAMP);",
-                {"server": server.split("/")[-1], "players": len(players.get("players"))})
+                {
+                    "server": server.split("/")[-1],
+                    "players": len(players.get("players")),
+                },
+            )
 
     def main(self) -> None:
         schedule.every(5).seconds.do(self.executor, "alive")
@@ -113,7 +130,9 @@ class PlaytimeScrape:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(asctime)s: %(message)s",
-                        level=logging.INFO,
-                        datefmt="%Y/%m/%d %H:%M:%S")
+    logging.basicConfig(
+        format="%(asctime)s: %(message)s",
+        level=logging.INFO,
+        datefmt="%Y/%m/%d %H:%M:%S",
+    )
     PlaytimeScrape().main()
