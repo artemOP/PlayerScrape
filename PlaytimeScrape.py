@@ -35,7 +35,7 @@ class PlaytimeScrape:
                 "CREATE TABLE IF NOT EXISTS serveractivity(server TEXT, players INT, timestamp TIMESTAMP)"
             )
             connection.execute(
-                "CREATE TABLE IF NOT EXISTS totalplaytime(player INT PRIMARY KEY, playitme INTERVAL, last_seen TIMESTAMP)"
+                "CREATE TABLE IF NOT EXISTS totalplaytime(player INT PRIMARY KEY, playtime INTERVAL, last_seen TIMESTAMP)"
             )
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS playtime(player INT, name TEXT, playtime INTERVAL, timestamp DATE, PRIMARY KEY(player, timestamp))"
@@ -112,7 +112,7 @@ class PlaytimeScrape:
                     {"player": player[2], "name": player[0]},
                 )
                 self.submit(
-                    "INSERT INTO totalplaytime(player, playitme, last_seen) VALUES (%(player)s, '1 minute'::interval, now():: timestamp) ON CONFLICT(player) DO UPDATE SET playitme = totalplaytime.playitme + '1 minute'::INTERVAL, last_seen = excluded.last_seen;",
+                    "INSERT INTO totalplaytime(player, playtime, last_seen) VALUES (%(player)s, '1 minute'::interval, now():: timestamp) ON CONFLICT(player) DO UPDATE SET playtime = totalplaytime.playtime + '1 minute'::INTERVAL, last_seen = excluded.last_seen;",
                     {"player": player[2]},
                 )
                 self.submit(
